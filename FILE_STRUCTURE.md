@@ -60,9 +60,9 @@ giveaid_project/
 ### Summary
 
 - **Separation of Concerns**: The project is structured to separate non-API related functionality (giveaid app) from API related functionality (api app).
-- **Flexibility**: Includes optional files for non-API views and their URL configurations, depending on whether you need them.
+- **Flexibility**: Includes optional files for non-API views and their URL configurations, depending on whether we need them.
 - **Testing**: Each app has its own `tests.py` file to maintain separation of test concerns.
-- **Organization**: This structure is designed to be organized and scalable as your project grows.
+- **Organization**: This structure is designed to be organised and scalable as the project grows.
 
 ### Running Tests
 
