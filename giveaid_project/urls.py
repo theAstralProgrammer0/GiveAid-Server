@@ -1,22 +1,22 @@
-"""
-URL configuration for giveaid_project project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from rest_framework.authtoken.views import obtain_auth_token
+from api.views import UserRegistrationView, UserLoginView, UserLogoutView, \
+    PasswordResetView, PasswordResetConfirmView, EmailVerificationView, \
+    DonationCreateView, PaymentProcessView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # User Authentication URLs
+    path('api/user/register/', UserRegistrationView.as_view(), name='user_register'),
+    path('api/user/login/', obtain_auth_token, name='user_login'),
+    path('api/user/logout/', UserLogoutView.as_view(), name='user_logout'),
+    path('api/user/password/reset/', PasswordResetView.as_view(), name='password_reset'),
+    path('api/user/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('api/user/email/verify/', EmailVerificationView.as_view(), name='email_verify'),
+
+    # Donation and Payment URLs
+    path('api/donation/create/', DonationCreateView.as_view(), name='donation_create'),
+    path('api/payment/process/', PaymentProcessView.as_view(), name='payment_process'),
 ]
