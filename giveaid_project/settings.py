@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,13 +28,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-AUTH_USER_MODEL = "giveaid.User"
+AUTH_USER_MODEL = "giveaid.User" 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'giveaid.apps.GiveaidConfig',
-    'api.apps.ApiConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,18 +40,24 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'dj_rest_auth',
-    'dj_rest_auth.registration',
+    # Local apps
+    'giveaid.apps.GiveaidConfig',
+    'api.apps.ApiConfig',
+    
+    
+    # Third party
+    'jazzmin',
+    'rest_framework',
+    'rest_framework.authtoken',
+    
     # CORS handling ..
-    'corsheaders',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -134,16 +139,15 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Authentication backends
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
-
 # Django Rest Framework settings for session-based authentication
 REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',        
+    ],
+    
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication'
     ],
 }
 
@@ -157,3 +161,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Sites framework
 SITE_ID = 1
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True

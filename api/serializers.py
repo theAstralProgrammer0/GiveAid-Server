@@ -1,11 +1,26 @@
 from rest_framework import serializers
-from models import User, Cause, UserDonation, UnregisteredDonation, Payment, SuccessStory
+from giveaid.models import User, Cause, UserDonation, UnregisteredDonation, Payment, SuccessStory
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User 
+        fields = ['id', 'username', 'email', 'firstname', 'lastname', 'password']
+        extra_args = {
+            'password': {'write_only': True}
+        }
+        
+    def create(self, validated_data):
+        password = validated_data['password']
+        instance = self.Meta.model(**validated_data)
+        if password is not None:
+            instance.set_password(password)
+        instance.save()
+
+class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'firstname', 'middlename', 'lastname', 'dob', 'mobile', 'street', 'country', 'state', 'city']
+        fields = ['id', 'username', 'email', 'firstname', 'middlename', 'lastname', 'dob', 'mobile', 'country', 'state', 'city', 'street']
 
 
 class CauseSerializer(serializers.ModelSerializer):

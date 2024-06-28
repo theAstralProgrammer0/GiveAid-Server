@@ -46,23 +46,27 @@ class City(models.Model):
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, verbose_name="user id")
-    country = models.ForeignKey(Country, on_delete=models.CASCADE)
-    state = models.ForeignKey(State, on_delete=models.CASCADE)
-    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, null=True, blank=True)
+    state = models.ForeignKey(State, on_delete=models.CASCADE, null=True, blank=True)
+    city = models.ForeignKey(City, on_delete=models.CASCADE, null=True, blank=True)
     username = models.CharField(max_length=255, unique=True)
     firstname = models.CharField(max_length=255)
     middlename = models.CharField(max_length=255, null=True, blank=True)
     lastname = models.CharField(max_length=255)
     email = models.EmailField(max_length=254, unique=True)
     password = models.CharField(max_length=255)
-    dob = models.DateField()
+    dob = models.DateField(null=True, blank=True)
     mobile = models.CharField(max_length=255, null=True, blank=True)
     street = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    USERNAME_FIELD = "username"
+    EMAIL_FIELD = "email"
+    REQUIRED_FIELDS = ["firstname", "lastname"]
+    
     def __str__(self):
-        self.username
+        return f"{self.firstname} {self.lastname}"
         
     class Meta:
         db_table = "user"
@@ -100,8 +104,7 @@ class UserDonation(models.Model):
 class UnregisteredDonation(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
     cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
-    firstname = models.CharField(max_length=255)
-    lastname = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     email = models.EmailField(max_length=254)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
