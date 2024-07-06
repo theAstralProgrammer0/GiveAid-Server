@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.response import Response
 from giveaid.models import User, Cause, UserDonation, UnregisteredDonation, Payment, SuccessStory
 
 
@@ -11,13 +12,16 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         }
         
     def create(self, validated_data):
-        password = validated_data['password']
+        password = validated_data.get('password', None)
         instance = self.Meta.model(**validated_data)
         if password is not None:
             instance.set_password(password)
         instance.save()
+        
+        return Response(instance)
+    
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'firstname', 'middlename', 'lastname', 'dob', 'mobile', 'country', 'state', 'city', 'street']
