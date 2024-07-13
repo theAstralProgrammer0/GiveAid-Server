@@ -1,6 +1,7 @@
 from django.conf import settings
 from datetime import datetime, timezone, timedelta
 import jwt
+import requests
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from rest_framework import authentication, exceptions
@@ -22,8 +23,8 @@ def generate_token(user):
     payload = {
         "user_id": user_id,
         "exp": datetime.now(timezone.utc) + timedelta(hours=2),
-        'iat': datetime.now(timezone.utc)
-        
+        'iat': datetime.now(timezone.utc),
+        'token_type': 'access'
 	}
     
     access_token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
@@ -48,12 +49,12 @@ def generate_refresh_token(user):
     payload = {
         "user_id": user_id,
         "exp": datetime.now(timezone.utc) + timedelta(days=7),
-        'iat': datetime.now(timezone.utc)
-        
+        'iat': datetime.now(timezone.utc),
+        'token_type': 'refresh'
 	}
     
-    access_token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
-    return access_token
+    refresh_token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    return refresh_token
 
 
 
@@ -87,6 +88,8 @@ class JWTAuthentication(authentication.BaseAuthentication):
     def _authenticate_credentials(self, token):
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            if payload.get('token_type') != 'access':
+                raise exceptions.AuthenticationFailed('Invalid token type')
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed('Token has expired')
         except jwt.InvalidTokenError:
@@ -104,9 +107,28 @@ class JWTAuthentication(authentication.BaseAuthentication):
     def decode_refresh_token(token):
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            if payload.get('token_type') != 'refresh':
+                raise exceptions.AuthenticationFailed('Invalid token type')
             return payload['user_id']
         except jwt.ExpiredSignatureError:
             raise exceptions.AuthenticationFailed("Refresh token has expired")
         except jwt.InvalidTokenError:
             raise exceptions.AuthenticationFailed('Invalid Refresh Token')
             
+
+
+def get_paystack_authorization_url(donation):
+    print("I just go into the get paystack auth url")
+    url = 'https://api.paystack.co/transaction/initialize'
+    headers = {
+        'Authorization': f'Bearer {PAYSTACK_SECRET_KEY}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'email': donation.email,
+        'amount': int(donation.amount) * 100,  # Paystack amount is in kobo
+        'callback_url': 'http://127.0.0.1:3000'
+    }
+    response = requests.post(url, headers=headers, json=data)
+    return response.json().get('data').get('authorization_url')
+

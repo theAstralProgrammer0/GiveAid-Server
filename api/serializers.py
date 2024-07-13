@@ -2,7 +2,6 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from giveaid.models import User, Cause, UserDonation, UnregisteredDonation, Payment, SuccessStory
 
-
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User 
@@ -40,9 +39,12 @@ class UserDonationSerializer(serializers.ModelSerializer):
 
 
 class UnregisteredDonationSerializer(serializers.ModelSerializer):
+    cause = serializers.PrimaryKeyRelatedField(queryset=Cause.objects.all(), required=True)
+    
     class Meta:
         model = UnregisteredDonation
         fields = '__all__'
+
 
 
 class PaymentSerializer(serializers.ModelSerializer):

@@ -1,4 +1,6 @@
-from rest_framework import permissions, status
+# api/views.py
+
+from rest_framework import permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
@@ -11,9 +13,110 @@ from .serializers import (
     UserSerializer,
     UnregisteredDonationSerializer,
     PaymentSerializer,
-    SuccessStorySerializer,
+    SuccessStorySerializer
 )
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from giveaid_project import settings
+import requests
+import json  # Import the json module
 
+class DonationCreateView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = UnregisteredDonationSerializer(data=request.data)
+        if serializer.is_valid():
+            donation = serializer.save(status="pending")
+
+            # Create Paystack Transaction
+            url = "https://api.paystack.co/transaction/initialize"
+            headers = {
+                'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+                'Content-Type': 'application/json'
+            }
+            data = {
+                'email': request.data['email'],
+                'amount': int(float(request.data["amount"]) * 100),
+                'metadata': {
+                    "custom_fields": [
+                        {"display_name": "Name", "variable_name": "name", "value": request.data["name"]},
+                        {"display_name": "Cause", "variable_name": "cause", "value": request.data["cause"]}
+                    ]
+                }
+            }
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            paystack_response = response.json()
+
+            if paystack_response["status"]:
+                donation.status = "pending"
+                donation.save()
+                return Response({
+                    "status": True,
+                    "message": "Authorization URL created",
+                    "data": paystack_response["data"]
+                })
+            else:
+                return Response({"status": False, "message": "Payment initialization failed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+'''
+class DonationCreateView(APIView):
+    def post(self, request):
+        print("Posting...")
+        user = request.user if request.user.is_authenticated else None
+        serializer_class = UserDonationSerializer if user else UnregisteredDonationSerializer
+        serializer = serializer_class(data=request.data)
+        if serializer.is_valid():
+            donation = serializer.save(user=user)
+            # Integrate with Paystack here
+            authorization_url = get_paystack_authorization_url(donation)
+            print(authorization_url)
+            send_donation_receipt.delay(donation.id)
+            return Response({'status': 'success', 'authorization_url': authorization_url}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DonationCreateView(APIView):
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UnregisteredDonationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(status="pending")
+
+            # Create Paystack Transaction
+            url = "https://api.paystack.co/transaction/initialize"
+            headers = {
+                'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
+                'Content-Type': 'application/json'
+                }
+            data = {
+                'email': request.data['email'],
+                'amount': int(float(request.data["amount"]) * 100),
+                'metadata': {
+                    "custom_fields": [
+                        {"display_name": "Name", "variable_name": "name", "value": request.data["name"]},
+                        {"display_name": "Cause", "variable_name": "cause", "value": request.data["cause"]}
+                      ]
+                    }
+                }
+            response = requests.post(url, headers=headers, data=json.dumps(data))
+            paystack_response = response.json()
+
+            if paystack_response["status"]:
+                donation = Donation.objects.get(reference=serializer.data["reference"])
+                donation.status = "pending"
+                donation.save()
+                return Response({
+                    "status": True,
+                    "message": "Authorization URL created",
+                    "data": paystack_response["data"]
+                })
+            else:
+                return Response({"status": False, "message": "Payment initialization failed"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+'''
 
 class UserRegisterView(APIView):
     """
@@ -51,6 +154,7 @@ class UserLoginView(APIView):
     permission_classes = (permissions.AllowAny,)
     
     def post(self, request):
+        print("Logging in")
         email = request.data['email']
         password = request.data['password']
         
@@ -124,10 +228,10 @@ class RefreshTokenView(APIView):
             raise AuthenticationFailed('User not found')
         
         access_token = generate_token(user)
-        refresh_token = generate_refresh_token(user)
+        new_refresh_token = generate_refresh_token(user)
         response_data = {
             'access-token': access_token,
-            'refresh_token': refresh_token
+            'refresh_token': new_refresh_token
         }
         
         return Response(response_data)
@@ -163,6 +267,10 @@ class UserLogoutView(APIView):
         }
         return response
 
+class CauseListView(generics.ListAPIView):
+    queryset = Cause.objects.all()
+    serializer_class = CauseSerializer
+    permission_classes = (permissions.AllowAny,)
 
 class UserView(APIView):
     pass

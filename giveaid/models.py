@@ -101,7 +101,31 @@ class UserDonation(models.Model):
     class Meta:
         db_table = "userdonation"   
  
+# giveaid/models.py
 
+class UnregisteredDonation(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed')
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
+    cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    email = models.EmailField(max_length=254)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')  # Add status field
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Unregistered donor donation to {self.cause.title}"
+
+    class Meta:
+        db_table = "unregistereddonation"
+
+'''
 class UnregisteredDonation(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
     cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
@@ -116,6 +140,24 @@ class UnregisteredDonation(models.Model):
     class Meta:
         db_table = "unregistereddonation"
 
+# giveaid/models.py
+
+class UnregisteredDonation(models.Model):
+    id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
+    cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    email = models.EmailField(max_length=254)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Add amount field
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Unregistered donor donation to {self.cause.title}"
+
+    class Meta:
+        db_table = "unregistereddonation"
+
+'''
 
 class Payment(models.Model):
     DONATION_TYPE_CHOICES = [
