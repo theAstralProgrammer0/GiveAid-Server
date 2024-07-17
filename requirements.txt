@@ -19,7 +19,6 @@ decorator==5.1.1
 Deprecated==1.2.14
 dill==0.3.8
 distlib==0.3.0
-distro-info==0.23+ubuntu1.1
 Django==4.2.13
 django-cors-headers==4.4.0
 django-jazzmin==3.0.0
