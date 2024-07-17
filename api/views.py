@@ -1,13 +1,20 @@
 # api/views.py
 
+import requests
+import json
 from rest_framework import permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
-from .permissions import IsAdminUser
-from .utils import generate_token, generate_refresh_token, JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from django.contrib.auth.tokens import default_token_generator
+from giveaid_project import settings
 from giveaid.models import User, Cause, UserDonation, UnregisteredDonation, Payment, SuccessStory
+from .permissions import IsAdminUser
+from .utils import generate_token, generate_refresh_token, JWTAuthentication, send_reset_email
 from .serializers import (
+    UserSerializer,
     UserRegisterSerializer,
     CauseSerializer,
     UserSerializer,
@@ -15,11 +22,6 @@ from .serializers import (
     PaymentSerializer,
     SuccessStorySerializer
 )
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from giveaid_project import settings
-import requests
-import json  # Import the json module
 
 class DonationCreateView(APIView):
     permission_classes = (permissions.AllowAny,)
@@ -60,52 +62,35 @@ class DonationCreateView(APIView):
                 return Response({"status": False, "message": "Payment initialization failed"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-'''
-class DonationCreateView(APIView):
-    def post(self, request):
-        print("Posting...")
-        user = request.user if request.user.is_authenticated else None
-        serializer_class = UserDonationSerializer if user else UnregisteredDonationSerializer
-        serializer = serializer_class(data=request.data)
-        if serializer.is_valid():
-            donation = serializer.save(user=user)
-            # Integrate with Paystack here
-            authorization_url = get_paystack_authorization_url(donation)
-            print(authorization_url)
-            send_donation_receipt.delay(donation.id)
-            return Response({'status': 'success', 'authorization_url': authorization_url}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DonationCreateView(APIView):
-    # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated]
+class UserDonationCreateView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request):
-        serializer = UnregisteredDonationSerializer(data=request.data)
+        serializer = UserDonationSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(status="pending")
+            donation = serializer.save(user=request.user, status="pending")
 
             # Create Paystack Transaction
             url = "https://api.paystack.co/transaction/initialize"
             headers = {
                 'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
                 'Content-Type': 'application/json'
-                }
+            }
             data = {
-                'email': request.data['email'],
+                'email': request.user.email,
                 'amount': int(float(request.data["amount"]) * 100),
                 'metadata': {
                     "custom_fields": [
-                        {"display_name": "Name", "variable_name": "name", "value": request.data["name"]},
-                        {"display_name": "Cause", "variable_name": "cause", "value": request.data["cause"]}
-                      ]
-                    }
+                        {"display_name": "Name", "variable_name": "name", "value": request.user.username},
+                        {"display_name": "Cause", "variable_name": "cause", "value": donation.cause.title}
+                    ]
                 }
+            }
             response = requests.post(url, headers=headers, data=json.dumps(data))
             paystack_response = response.json()
 
             if paystack_response["status"]:
-                donation = Donation.objects.get(reference=serializer.data["reference"])
                 donation.status = "pending"
                 donation.save()
                 return Response({
@@ -116,28 +101,15 @@ class DonationCreateView(APIView):
             else:
                 return Response({"status": False, "message": "Payment initialization failed"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-'''
+
 
 class UserRegisterView(APIView):
-    """
-    A view for handling user registration.
-
-    This view handles POST requests to register a new user. It uses a serializer 
-    to validate and save the user data.
-
-    Attributes:
-        permission_classes (tuple): Specifies the permissions that apply to this view.
-    """
-    permission_classes = (permissions.AllowAny,)
-    
     def post(self, request):
-        serializer = UserRegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        
-        return Response({
-            "Message": "User Created Successfully"
-        })
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
 class UserLoginView(APIView):
@@ -267,16 +239,44 @@ class UserLogoutView(APIView):
         }
         return response
 
+
+class UserView(APIView):
+    pass
+
 class CauseListView(generics.ListAPIView):
     queryset = Cause.objects.all()
     serializer_class = CauseSerializer
     permission_classes = (permissions.AllowAny,)
 
-class UserView(APIView):
-    pass
 
-class PasswordReset(APIView):
-    pass
+class SuccessStoryListView(generics.ListAPIView):
+    queryset = SuccessStory.objects.all()
+    serializer_class = SuccessStorySerializer
+    permission_classes = (permissions.AllowAny,)
 
-class PasswordResetConfirm(APIView):
-    pass
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        try:
+            user = User.objects.get(email=email)
+            token = default_token_generator.make_token(user)
+            send_reset_email(user, token)
+            return Response({'status': 'success', 'message': 'Password reset email sent.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'status': 'failed', 'message': 'User with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        token = request.data.get('token')
+        password = request.data.get('password')
+        try:
+            user = User.objects.get(pk=request.data.get('user_id'))
+            if default_token_generator.check_token(user, token):
+                user.set_password(password)
+                user.save()
+                return Response({'status': 'success', 'message': 'Password reset successfully.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'status': 'failed', 'message': 'Invalid token.'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'status': 'failed', 'message': 'User does not exist.'}, status=status.HTTP_404_NOT_FOUND)

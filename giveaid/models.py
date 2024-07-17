@@ -86,14 +86,22 @@ class Cause(models.Model):
     class Meta:
         db_table = "cause"
     
-
 class UserDonation(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name="user donation id")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
     description = models.TextField(null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=10, choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Donation by {self.user.username} to {self.cause.title}"
+
+    class Meta:
+        db_table = "userdonation"
+
     
     def __str__(self):
         return f"Donation by {self.user.username} to {self.cause.title}"
@@ -101,7 +109,6 @@ class UserDonation(models.Model):
     class Meta:
         db_table = "userdonation"   
  
-# giveaid/models.py
 
 class UnregisteredDonation(models.Model):
     STATUS_CHOICES = [
@@ -125,39 +132,6 @@ class UnregisteredDonation(models.Model):
     class Meta:
         db_table = "unregistereddonation"
 
-'''
-class UnregisteredDonation(models.Model):
-    id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
-    cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    email = models.EmailField(max_length=254)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return f"Unregistered donor donation to {self.cause.title}"
-    
-    class Meta:
-        db_table = "unregistereddonation"
-
-# giveaid/models.py
-
-class UnregisteredDonation(models.Model):
-    id = models.BigAutoField(primary_key=True, verbose_name="Unregistered donation id")
-    cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    email = models.EmailField(max_length=254)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Add amount field
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Unregistered donor donation to {self.cause.title}"
-
-    class Meta:
-        db_table = "unregistereddonation"
-
-'''
 
 class Payment(models.Model):
     DONATION_TYPE_CHOICES = [
@@ -188,18 +162,20 @@ class Payment(models.Model):
     class Meta:
         db_table = "payment"
 
-
 class SuccessStory(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name="Success story id")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     cause = models.ForeignKey(Cause, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
+    image = models.URLField(max_length=200, null=True, blank=True)
+    video = models.URLField(max_length=200, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return self.title
-    
+
     class Meta:
         db_table = "successstory"
+

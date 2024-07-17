@@ -5,6 +5,8 @@ import requests
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from rest_framework import authentication, exceptions
+from django.core.mail import send_mail
+from django.urls import reverse
 
 
 User = get_user_model()
@@ -132,3 +134,22 @@ def get_paystack_authorization_url(donation):
     response = requests.post(url, headers=headers, json=data)
     return response.json().get('data').get('authorization_url')
 
+
+def send_reset_email(user, token):
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}&user_id={user.id}"
+    subject = 'Password Reset Request'
+    message = f"""
+    Hi {user.first_name},
+
+    You requested a password reset. Please click the link below to reset your password:
+
+    {reset_url}
+
+    If you did not request this, please ignore this email.
+
+    Regards,
+    GiveAid Team
+    """
+    email_from = settings.EMAIL_HOST_USER
+    recipient_list = [user.email]
+    send_mail(subject, message, email_from, recipient_list, fail_silently=False)
