@@ -92,7 +92,6 @@ tldr==3.2.0
 tqdm==4.66.4
 typing_extensions==4.11.0
 tzdata==2024.1
-ufw==0.36
 unattended-upgrades==0.1
 uncompyle6==3.9.0
 urllib3==2.2.1
