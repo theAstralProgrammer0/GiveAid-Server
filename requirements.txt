@@ -8,5 +8,5 @@ psycopg2-binary==2.9.9
 PyJWT==2.8.0
 python-dotenv==1.0.1
 sqlparse==0.5.0
-gunicorn==21.3.0
+gunicorn>=21.3.0,<21.3.0
 djangorestframework-simplejwt>=5.3.0,<5.4.0
